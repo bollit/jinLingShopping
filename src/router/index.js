@@ -1,29 +1,80 @@
 import Vue from 'vue'
 import VueRouter from 'vue-router'
-import HomeView from '../views/HomeView.vue'
 
 Vue.use(VueRouter)
 
 const routes = [
   {
     path: '/',
-    name: 'home',
-    component: HomeView
+    redirect: '/home'
   },
   {
-    path: '/about',
-    name: 'about',
-    // route level code-splitting
-    // this generates a separate chunk (about.[hash].js) for this route
-    // which is lazy-loaded when the route is visited.
+    path: '/home',
+    name: 'home',
+    component: () => import('@/views/Home'),
+    redirect: '/home/welcom',
+    children: [
+      {
+        path: 'welcom',
+        component: () => import('@/components/Welcom')
+      },
+      {
+        path: 'users',
+        component: () => import('@/components/Users.vue'),
+      },
+      {
+        path: 'rights',
+        component: () => import('@/components/Rights')
+      },
+      {
+        path: 'reports',
+        component: () => import('@/components/Reports')
+      }, {
+        path: 'orders',
+        component: () => import('@/components/Orders')
+      },
+      {
+        path: 'goods',
+        component: () => import('@/components/Goods')
+      },
+      {
+        path: 'roles',
+        component: () => import('@/components/Roles')
+      },
+      {
+        path: 'params',
+        component: () => import('@/components/Params')
+      },
+      {
+        path: 'categories',
+        component: () => import('@/components/Categories')
+      }
+    ]
+  },
+  {
+    path: '/login',
+    name: 'login',
     component: function () {
-      return import(/* webpackChunkName: "about" */ '../views/AboutView.vue')
+      return import('@/views/Login')
     }
   }
 ]
 
 const router = new VueRouter({
   routes
+})
+
+router.beforeEach((to, from, next) => {
+  if (to.path != '/login') {
+    let token = sessionStorage.getItem('token')
+    if (token) {
+      next()
+    } else {
+      next('/login')
+    }
+  } else {
+    next()
+  }
 })
 
 export default router
