@@ -51,20 +51,24 @@
           ></template>
         </el-table-column>
         <el-table-column label="操作">
-          <template>
+          <template slot-scope="scope">
             <!-- 编辑按钮 -->
             <el-button
               type="primary"
               icon="el-icon-edit"
               size="mini"
-              @click="dialogVisible = true"
+              @click="edit(scope.row.id)"
             ></el-button>
 
+            <!-- 删除按钮 -->
             <el-button
               type="danger"
               icon="el-icon-delete"
               size="mini"
+              @click="editDelete(scope.row.id)"
             ></el-button>
+
+            <!-- 分配角色按钮 -->
             <el-tooltip
               effect="dark"
               content="分配角色"
@@ -75,6 +79,7 @@
                 type="warning"
                 icon="el-icon-setting"
                 size="mini"
+                @click="settingDialogVisible = true"
               ></el-button>
             </el-tooltip>
           </template>
@@ -86,7 +91,7 @@
         @size-change="handleSizeChange"
         @current-change="handleCurrentChange"
         :current-page="queryInfo.pagenum"
-        :page-sizes="[1, 2, 3, 4]"
+        :page-sizes="[1, 2, 3, 4, 6, 10]"
         :page-size="queryInfo.pagesize"
         layout="total, sizes, prev, pager, next, jumper"
         :total="total"
@@ -133,15 +138,69 @@
 
     <!-- 编辑按钮会话框 -->
     <el-dialog
-      title="提示"
-      :visible.sync="dialogVisible1"
+      title="修改用户"
+      :visible.sync="editDialogVisible"
+      width="30%"
+      :before-close="handleClose"
+      @close="editDialogClosed"
+    >
+      <!-- 编辑表单 -->
+      <el-form
+        :model="editForm"
+        :rules="rules"
+        ref="editForm"
+        label-width="100px"
+        class="demo-ruleForm"
+      >
+        <el-form-item label="用户名" prop="username">
+          <el-input v-model="editForm.username" :disabled="true"></el-input>
+        </el-form-item>
+        <el-form-item label="邮箱" prop="email">
+          <el-input v-model="editForm.email"></el-input>
+        </el-form-item>
+        <el-form-item label="手机" prop="mobil">
+          <el-input v-model="editForm.mobile"></el-input>
+        </el-form-item>
+      </el-form>
+
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="editDialogVisible = false">取 消</el-button>
+        <el-button type="primary" @click="editUsersInfo">确 定</el-button>
+      </span>
+    </el-dialog>
+
+    <!-- 分配角色回话框 -->
+    <el-dialog
+      title="分配角色"
+      :visible.sync="settingDialogVisible"
       width="30%"
       :before-close="handleClose"
     >
-      <span>这是一段信息</span>
+      <!-- 分配角色表单 -->
+      <el-form
+        :model="ruleForm"
+        :rules="rules"
+        ref="editForm"
+        label-width="100px"
+        class="demo-ruleForm"
+      >
+        <el-form-item label="当前的用户" prop="username">
+          <el-input v-model="editForm.username" :disabled="true"></el-input>
+        </el-form-item>
+        <el-form-item label="当前的角色" prop="role_name">
+          <el-input v-model="editForm.mobile" :disabled="true"></el-input>
+        </el-form-item>
+        <el-form-item label="分配新角色">
+          <el-select v-model="form.region" placeholder="请选择">
+            <el-option label="张三" value="shanghai"></el-option>
+            <el-option label="李四" value="beijing"></el-option>
+          </el-select>
+        </el-form-item>
+      </el-form>
+
       <span slot="footer" class="dialog-footer">
-        <el-button @click="dialogVisible1 = false">取 消</el-button>
-        <el-button type="primary" @click="dialogVisible1 = false"
+        <el-button @click="settingDialogVisible = false">取 消</el-button>
+        <el-button type="primary" @click="settingDialogVisible = false"
           >确 定</el-button
         >
       </span>
@@ -223,7 +282,39 @@ export default {
         ],
       },
       // 编辑按钮
-      dialogVisible1: false,
+      editDialogVisible: false,
+      editForm: {},
+      // 关闭会话框清空
+      editDialogClosed() {
+        this.$refs.editForm.resetFields();
+      },
+
+      // 修改并提交用户信息
+      editUsersInfo: () => {
+        console.log(this);
+        this.$refs.editForm.validate(async (valid) => {
+          console.log(valid);
+          if (!valid) return;
+          // 发起修改请求
+          let res = await this.axios.put(`users/${this.editForm.id}`, {
+            email: this.editForm.email,
+            mobile: this.editForm.mobile,
+          });
+          if (res.meta.status !== 200) {
+            this.$message.error("修改失败！");
+          } else {
+            this.$message.success("修改成功！");
+          }
+          this.editDialogVisible = false;
+          this.getUsers();
+        });
+      },
+
+      // 分配角色
+      settingDialogVisible: false,
+      form: {
+        region: "",
+      },
     };
   },
   methods: {
@@ -289,15 +380,35 @@ export default {
         if (!valid) return;
         let res = await this.axios.post("users", this.ruleForm);
         if (res.meta.status != 201) {
-          console.log(res);
           return this.$message.error("添加用户信息失败！");
         }
         this.$message.success("成功添加用户信息！");
-        this.dialogVisible1 = false;
+        this.editDialogVisible = false;
         this.dialogVisible = false;
         this.getUsers();
         this.handleCurrentChange(this.total);
       });
+    },
+
+    // 编辑按钮
+    async edit(id) {
+      let res = await this.axios.get(`users/${id}`);
+      if (res.meta.status != 200) {
+        return this.$message.error("查询用户信息失败！");
+      }
+      this.$message.success("查询用户信息成功！");
+      this.editForm = res.data;
+      this.editDialogVisible = true;
+    },
+
+    // 删除按钮
+    async editDelete(id) {
+      let res = await this.axios.delete(`users/${id}`);
+      if (res.meta.status != 200) {
+        return this.$message.error("删除该用户信息失败！");
+      }
+      this.$message.success(res.meta.msg);
+      this.getUsers();
     },
   },
   components: {},
