@@ -12,12 +12,34 @@
     <!-- 主体卡片 -->
     <el-card class="box-card">
       <!-- 角色列表 -->
-      <el-table :data="tableData" stripe style="width: 100%">
-        <el-table-column prop="date" label="日期" width="180">
+      <el-table :data="rightsForm" stripe style="width: 100%" :border="true">
+        <el-table-column width="50" type="index"> </el-table-column>
+        <el-table-column
+          prop="authName"
+          label="权限名称"
+          v-model="rightsForm.authName"
+        >
         </el-table-column>
-        <el-table-column prop="name" label="姓名" width="180">
+        <el-table-column
+          prop="path"
+          label="路径"
+          v-model="rightsForm.path"
+        ></el-table-column>
+        <el-table-column
+          prop="level"
+          label="权限等级"
+          v-model="rightsForm.level"
+        >
+          <template slot-scope="scope">
+            <el-tag v-if="scope.row.level === '0'">一级权限</el-tag>
+            <el-tag type="success" v-if="scope.row.level === '1'"
+              >二级权限</el-tag
+            >
+            <el-tag type="warning" v-if="scope.row.level === '2'"
+              >三级权限</el-tag
+            >
+          </template>
         </el-table-column>
-        <el-table-column prop="address" label="地址"> </el-table-column>
       </el-table>
     </el-card>
   </div>
@@ -28,32 +50,20 @@ export default {
   props: {},
   data() {
     return {
-      tableData: [
-        {
-          date: "2016-05-02",
-          name: "王小虎",
-          address: "上海市普陀区金沙江路 1518 弄",
-        },
-        {
-          date: "2016-05-04",
-          name: "王小虎",
-          address: "上海市普陀区金沙江路 1517 弄",
-        },
-        {
-          date: "2016-05-01",
-          name: "王小虎",
-          address: "上海市普陀区金沙江路 1519 弄",
-        },
-        {
-          date: "2016-05-03",
-          name: "王小虎",
-          address: "上海市普陀区金沙江路 1516 弄",
-        },
-      ],
+      rightsForm: [],
     };
   },
-  methods: {},
+  methods: {
+    async getRights() {
+      let res = await this.axios.get("rights/list");
+      this.rightsForm = res.data;
+      console.log(res.data);
+    },
+  },
   components: {},
+  mounted() {
+    this.getRights();
+  },
 };
 </script>
 

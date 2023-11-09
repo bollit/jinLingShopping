@@ -68,18 +68,19 @@
               @click="editDelete(scope.row.id)"
             ></el-button>
 
-            <!-- 分配角色按钮 -->
+            <!-- 分配角色按钮悬浮提示信息 -->
             <el-tooltip
               effect="dark"
               content="分配角色"
               placement="top"
               :enterable="false"
             >
+              <!-- 分配角色按钮 -->
               <el-button
                 type="warning"
                 icon="el-icon-setting"
                 size="mini"
-                @click="settingDialogVisible = true"
+                @click="settingDialog(scope.row)"
               ></el-button>
             </el-tooltip>
           </template>
@@ -104,7 +105,6 @@
       title="添加用户"
       :visible.sync="dialogVisible"
       width="30%"
-      :before-close="handleClose"
       @closed="addDialogClosed"
     >
       <!-- 会话框表单 -->
@@ -141,7 +141,6 @@
       title="修改用户"
       :visible.sync="editDialogVisible"
       width="30%"
-      :before-close="handleClose"
       @close="editDialogClosed"
     >
       <!-- 编辑表单 -->
@@ -169,40 +168,43 @@
       </span>
     </el-dialog>
 
-    <!-- 分配角色回话框 -->
+    <!-- 分配角色对话框 -->
     <el-dialog
       title="分配角色"
       :visible.sync="settingDialogVisible"
       width="30%"
-      :before-close="handleClose"
+      @close="dialogCloseed"
     >
       <!-- 分配角色表单 -->
       <el-form
         :model="ruleForm"
         :rules="rules"
-        ref="editForm"
+        ref="settingInfo"
         label-width="100px"
         class="demo-ruleForm"
       >
         <el-form-item label="当前的用户" prop="username">
-          <el-input v-model="editForm.username" :disabled="true"></el-input>
+          <el-input v-model="settingInfo.username" :disabled="true"></el-input>
         </el-form-item>
         <el-form-item label="当前的角色" prop="role_name">
-          <el-input v-model="editForm.mobile" :disabled="true"></el-input>
+          <el-input v-model="settingInfo.role_name" :disabled="true"></el-input>
         </el-form-item>
         <el-form-item label="分配新角色">
-          <el-select v-model="form.region" placeholder="请选择">
-            <el-option label="张三" value="shanghai"></el-option>
-            <el-option label="李四" value="beijing"></el-option>
+          <el-select v-model="rolesSelectedId" placeholder="请选择">
+            <el-option
+              v-for="item in rolesList"
+              :key="item.id"
+              :label="item.roleName"
+              :value="item.id"
+            >
+            </el-option>
           </el-select>
         </el-form-item>
       </el-form>
 
       <span slot="footer" class="dialog-footer">
         <el-button @click="settingDialogVisible = false">取 消</el-button>
-        <el-button type="primary" @click="settingDialogVisible = false"
-          >确 定</el-button
-        >
+        <el-button type="primary" @click="settingDialogRole">确 定</el-button>
       </span>
     </el-dialog>
   </div>
@@ -291,9 +293,7 @@ export default {
 
       // 修改并提交用户信息
       editUsersInfo: () => {
-        console.log(this);
         this.$refs.editForm.validate(async (valid) => {
-          console.log(valid);
           if (!valid) return;
           // 发起修改请求
           let res = await this.axios.put(`users/${this.editForm.id}`, {
@@ -315,6 +315,13 @@ export default {
       form: {
         region: "",
       },
+
+      // 存放点击分配权限后获取到的该用户信息
+      settingInfo: {},
+      // 获取到的角色列表
+      rolesList: [],
+      // 已选中的角色
+      rolesSelectedId: "",
     };
   },
   methods: {
@@ -324,6 +331,7 @@ export default {
       });
       this.users = res.users;
       this.total = res.total;
+      console.log(res);
     },
 
     // 分页方法
@@ -346,26 +354,6 @@ export default {
       }
     },
 
-    // 会话框事件
-    handleClose(done) {
-      this.$confirm("确认关闭？")
-        .then((_) => {
-          done();
-        })
-        .catch((_) => {});
-    },
-
-    // 会话框表单事件
-    submitForm(formName) {
-      this.$refs[formName].validate((valid) => {
-        if (valid) {
-          alert("submit!");
-        } else {
-          console.log("error submit!!");
-          return false;
-        }
-      });
-    },
     resetForm(formName) {
       this.$refs[formName].resetFields();
     },
@@ -408,6 +396,49 @@ export default {
         return this.$message.error("删除该用户信息失败！");
       }
       this.$message.success(res.meta.msg);
+      this.getUsers();
+    },
+
+    // 点击分配角色
+    async settingDialog(settingInfo) {
+      this.settingInfo = settingInfo;
+
+      // 请求获取角色列表
+      let res = await this.axios.get("roles").catch((error) => {});
+      if (res.meta.status != 200) {
+        return this.$message.error("角色列表获取失败！");
+      }
+      this.rolesList = res.data;
+
+      // 展示对话框
+      this.settingDialogVisible = true;
+    },
+
+    // 点击确认按钮分配角色
+    async settingDialogRole() {
+      if (!this.rolesSelectedId) {
+        return this.$message.error("请先为该用户分配角色！");
+      }
+      // 提交角色分配
+      try {
+        let res = await this.axios.put(`users/${this.settingInfo.id}/role`, {
+          rid: this.rolesSelectedId,
+        });
+        if (res.meta.status !== 200) {
+          return this.$message.error("角色更新失败！");
+        } else {
+          this.$message.success(res.meta.msg);
+        }
+        this.settingDialogVisible = false;
+      } catch (error) {
+        console.error("请求失败：", error);
+        this.$message.error("请求失败！");
+      }
+    },
+
+    // 分配角色对话框关闭时清空选择器
+    dialogCloseed() {
+      this.rolesSelectedId = [];
       this.getUsers();
     },
   },

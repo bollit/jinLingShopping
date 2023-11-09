@@ -140,7 +140,7 @@ export default {
       }
     }
     main {
-      background: url(@/assets/bj.jpg) no-repeat;
+      background: url(@/assets/bj.jpg) repeat-y;
 
       > img {
         width: 600px;
